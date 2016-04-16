@@ -5,7 +5,6 @@ import com.mb3364.twitch.api.handlers.*;
 import com.mb3364.twitch.api.models.Stream;
 import ovh.gyoo.bot.data.*;
 
-import java.io.IOException;
 import java.util.*;
 
 public class TwitchChecker {
@@ -42,7 +41,8 @@ public class TwitchChecker {
         List<LocalServer> servers = ServerList.getInstance().getServerList();
         for (final LocalServer server : servers) {
             if (OnlineMap.getInstance().getStreamList(server.getServerID()).size() > 0) {
-                for (final StreamInfo streamInfo : OnlineMap.getInstance().getStreamList(server.getServerID()))
+                List<StreamInfo> infos = new ArrayList<>(OnlineMap.getInstance().getStreamList(server.getServerID()));
+                for (final StreamInfo streamInfo : infos)
                     twitch.streams().get(streamInfo.getName(), new StreamResponseHandler() {
                         @Override
                         public void onSuccess(Stream stream) {

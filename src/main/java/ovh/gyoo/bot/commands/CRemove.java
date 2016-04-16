@@ -6,6 +6,7 @@ import net.dv8tion.jda.entities.Role;
 import net.dv8tion.jda.entities.User;
 import net.dv8tion.jda.events.message.MessageReceivedEvent;
 import ovh.gyoo.bot.data.*;
+import ovh.gyoo.bot.writer.Logger;
 
 import java.util.List;
 
@@ -33,9 +34,7 @@ public class CRemove implements Command {
             try{
                 option = content.substring(0, content.indexOf(" "));
             } catch(StringIndexOutOfBoundsException sioobe){
-                System.err.print("[StreamBot] ");
-                sioobe.printStackTrace();
-                System.err.println(content);
+
             }
             if(option.isEmpty()) message.setMessage(new MessageBuilder()
                     .appendString("An error has occured. Please let the bot's manager for this server contact @Gyoo.")
@@ -75,7 +74,13 @@ public class CRemove implements Command {
     @Override
     public boolean isAllowed(String serverID, String authorID) {
         LocalServer ls = ServerList.getInstance().getServer(serverID);
-        return ls.getManagers().contains(authorID) || getPermissionLevel(serverID, authorID) < Permissions.FORBID;
+        try{
+            return ls.getManagers().contains(authorID) || getPermissionLevel(serverID, authorID) < Permissions.FORBID;
+        } catch(NullPointerException e){
+            String message = "Guild ID : " + serverID + "\n" + "Guild Name : " + DiscordInstance.getInstance().getDiscord().getGuildById(serverID).getName();
+            Logger.writeToErr(e, message);
+            return false;
+        }
     }
 
     private int getPermissionLevel(String serverID, String authorID) {
@@ -145,20 +150,25 @@ public class CRemove implements Command {
         MessageBuilder builder = new MessageBuilder();
         LocalServer ls = ServerList.getInstance().getServer(serverId);
         if(ls.getManagers().contains(userId)) {
-            for (User u : users) {
-                if (ServerList.getInstance().getServer(serverId).getManagers().size() == 1) {
-                    builder.appendString("Cannot remove managers : There must be at least one manager per server\n");
-                    break;
+            if(users.isEmpty()){
+                builder.appendString("No users detected. Make sure you use the @ mention when adding managers");
+            }
+            else{
+                for (User u : users) {
+                    if (ServerList.getInstance().getServer(serverId).getManagers().size() == 1) {
+                        builder.appendString("Cannot remove managers : There must be at least one manager per server\n");
+                        break;
+                    }
+                    if (userId.equals(u.getId())) {
+                        builder.appendString("You cannot remove yourself !\n");
+                        continue;
+                    }
+                    boolean res = ServerList.getInstance().getServer(serverId).removeManager(u.getId());
+                    if (res)
+                        builder.appendString("User " + u.getUsername() + " removed from the managers list\n");
+                    else
+                        builder.appendString("User " + u.getUsername() + " is not in the managers list\n");
                 }
-                if (userId.equals(u.getId())) {
-                    builder.appendString("You cannot remove yourself !\n");
-                    continue;
-                }
-                boolean res = ServerList.getInstance().getServer(serverId).removeManager(u.getId());
-                if (res)
-                    builder.appendString("User " + u.getUsername() + " removed from the managers list\n");
-                else
-                    builder.appendString("User " + u.getUsername() + " is not in the managers list\n");
             }
         }
         else builder.appendString("You are not allowed to use this command");

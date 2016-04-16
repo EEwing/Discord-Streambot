@@ -2,10 +2,7 @@ package ovh.gyoo.bot.data;
 
 import com.mb3364.twitch.api.models.Stream;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -35,15 +32,13 @@ public class OnlineMap {
         online.get(serverId).add(streamInfo);
     }
 
-    public void addToList(String serverId, StreamInfo stream){ online.get(serverId).add(stream); }
-
     public void removeFromList(String serverId, String name){
         StreamInfo temp = new StreamInfo(name);
-        if(online.get(serverId).contains(temp)) online.get(serverId).remove(temp);
+        if (online.get(serverId).contains(temp)) online.get(serverId).remove(temp);
     }
 
     public void addServer(String serverId){
-        online.put(serverId, new ArrayList<>());
+        online.put(serverId, Collections.synchronizedList(new ArrayList<>()));
     }
 
     public ConcurrentMap<String, List<StreamInfo>> getMap(){

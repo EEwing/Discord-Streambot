@@ -1,13 +1,16 @@
 package ovh.gyoo.bot.listeners;
 
 import net.dv8tion.jda.Permission;
+import net.dv8tion.jda.entities.TextChannel;
 import net.dv8tion.jda.entities.User;
+import net.dv8tion.jda.exceptions.BlockedException;
 import net.dv8tion.jda.exceptions.RateLimitedException;
 import org.json.JSONException;
 import ovh.gyoo.bot.data.DiscordInstance;
 import ovh.gyoo.bot.data.MessageItem;
 import ovh.gyoo.bot.writer.Logger;
 
+import java.time.LocalTime;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class MessageConsumer extends Thread {
@@ -45,43 +48,38 @@ public class MessageConsumer extends Thread {
                     start = System.currentTimeMillis();
                     nbMessages = 0;
                 }
-
-                try{
-                    switch(work.getType()){
-                        case GUILD:
-                            User self = DiscordInstance.getInstance().getDiscord().getUserById(DiscordInstance.getInstance().getDiscord().getSelfInfo().getId());
-                            if(null != DiscordInstance.getInstance().getDiscord().getTextChannelById(work.getId())
-                            && DiscordInstance.getInstance().getDiscord().getTextChannelById(work.getId()).checkPermission(self, Permission.MESSAGE_WRITE)){
-                                try{
-                                    DiscordInstance.getInstance().getDiscord().getTextChannelById(work.getId()).sendMessage(work.getMessage());
-                                }catch(NullPointerException e){
-                                    System.err.print("[StreamBot] ");
-                                    e.printStackTrace();
-                                    System.err.println("Guild Channel id = " + work.getId());
-                                }catch(RateLimitedException e){
-                                    Thread.sleep(e.getTimeout());
-                                    DiscordInstance.getInstance().addToQueue(work);
-                                }
-                            }
-
-                            break;
-                        case PRIVATE:
+                switch(work.getType()){
+                    case GUILD:
+                        User self = DiscordInstance.getInstance().getDiscord().getUserById(DiscordInstance.getInstance().getDiscord().getSelfInfo().getId());
+                        TextChannel textChannel = DiscordInstance.getInstance().getDiscord().getTextChannelById(work.getId());
+                        if(null != work.getMessage()
+                                && null != textChannel
+                                && null != DiscordInstance.getInstance().getDiscord().getTextChannelById(work.getId())
+                                && DiscordInstance.getInstance().getDiscord().getTextChannelById(work.getId()).checkPermission(self, Permission.MESSAGE_WRITE)){
                             try{
-                                DiscordInstance.getInstance().getDiscord().getPrivateChannelById(work.getId()).sendMessage(work.getMessage());
+                                textChannel.sendMessage(work.getMessage());
                             }catch(NullPointerException e){
-                                System.err.print("[StreamBot] ");
-                                e.printStackTrace();
-                                System.err.println("Private Channel id = " + work.getId());
+                                Logger.writeToErr(e, "Guild Channel id = " + work.getId());
                             }catch(RateLimitedException e){
                                 Thread.sleep(e.getTimeout());
                                 DiscordInstance.getInstance().addToQueue(work);
+                            }catch (JSONException e){
+                                Logger.writeToErr(e, "[JSON Exception] : \n" + e.getLocalizedMessage());
                             }
-                            break;
-                    } //Keep this switch commented while testing.
-                }catch(JSONException e){
-                    Logger.writeToErr(e.getMessage());
-                }
+                        }
 
+                        break;
+                    case PRIVATE:
+                        try{
+                            DiscordInstance.getInstance().getDiscord().getPrivateChannelById(work.getId()).sendMessage(work.getMessage());
+                        }catch(NullPointerException | BlockedException e){
+                            Logger.writeToErr(e, "Private Channel id = " + work.getId());
+                        }catch(RateLimitedException e){
+                            Thread.sleep(e.getTimeout());
+                            DiscordInstance.getInstance().addToQueue(work);
+                        }
+                        break;
+                } //Keep this switch commented while testing.
             }
             catch ( InterruptedException ie ) {
                 continue;

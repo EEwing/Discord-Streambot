@@ -13,10 +13,7 @@ import ovh.gyoo.bot.handlers.TeamRequestHandler;
 import ovh.gyoo.bot.handlers.TeamUtils;
 import ovh.gyoo.bot.handlers.TwitchChecker;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class LocalServer{
 
@@ -31,6 +28,7 @@ public class LocalServer{
     Map<String, Boolean> notifs = new HashMap<>();
     List<QueueItem> commandsQueue = new ArrayList<>();
     boolean active;
+    boolean compact;
 
     public LocalServer(String id, String serverID){
         this.id = id;
@@ -41,6 +39,7 @@ public class LocalServer{
         managers = new ArrayList<>();
         active = false;
         this.serverID = serverID;
+        compact = false;
         initPermissions();
         initNotifs();
     }
@@ -178,6 +177,14 @@ public class LocalServer{
 
     public boolean isActive(){return active;}
 
+    public boolean isCompact() {
+        return compact;
+    }
+
+    public void setCompact(boolean compact) {
+        this.compact = compact;
+    }
+
     public Map<String, Permissions> getPermissionsMap() {
         return permissionsMap;
     }
@@ -312,19 +319,22 @@ public class LocalServer{
     }
 
     private void updateDiscordList(Stream stream) {
+        String linkBeginning = compact ? "<" : "`";
+        String linkEnd = compact ? ">" : " `";
         if(streamMatchesAttributes(stream)) {
             MessageBuilder builder = new MessageBuilder();
-            for(Map.Entry<String, Boolean> entry : getNotifs().entrySet()){
+            for(Iterator<Map.Entry<String, Boolean>> it = getNotifs().entrySet().iterator(); it.hasNext();){
+                Map.Entry<String, Boolean> entry = it.next();
                 if(entry.getValue()) {
                     if(entry.getKey().equals("everyone")) builder.appendEveryoneMention().appendString(" ");
                     else {
                         User u = DiscordInstance.getInstance().getDiscord().getUserById(entry.getKey());
-                        builder.appendMention(u).appendString(" ");
+                        if(null == u) it.remove();
+                        else builder.appendMention(u).appendString(" ");
                     }
                 }
             }
-            if(getNotifs().get("everyone")) builder.appendEveryoneMention().appendString(" ");
-            builder.appendString("NOW LIVE : ` http://twitch.tv/" + stream.getChannel().getName() + " ` playing " + stream.getGame() + " | " + stream.getChannel().getStatus() + " | (" + stream.getChannel().getBroadcasterLanguage() + ")");
+            builder.appendString("NOW LIVE : " + linkBeginning + "http://twitch.tv/" + stream.getChannel().getName() + linkEnd + " playing " + stream.getGame() + " | " + stream.getChannel().getStatus() + " | (" + stream.getChannel().getBroadcasterLanguage() + ")");
             DiscordInstance.getInstance().addToQueue(new MessageItem(getId(), MessageItem.Type.GUILD, builder.build()));
         }
     }
@@ -344,11 +354,18 @@ public class LocalServer{
 
         if (tagList.size() > 0) {
             boolean hasTag = false;
+            List<String> split;
+            if (null != stream.getChannel().getStatus())
+                split = Arrays.asList(stream.getChannel().getStatus().toLowerCase().split(" "));
+            else split = new ArrayList<>();
             for (String tag : tagList) {
-                if (null != stream.getChannel().getStatus() && stream.getChannel().getStatus().toLowerCase().contains(tag.toLowerCase())) {
-                    hasTag = true;
-                    break;
+                for(String word : split){
+                    if(word.startsWith(tag)){
+                        hasTag = true;
+                        break;
+                    }
                 }
+                if(hasTag) break;
             }
             if (!hasTag) return false;
         }

@@ -6,6 +6,7 @@ import net.dv8tion.jda.entities.Role;
 import net.dv8tion.jda.entities.User;
 import net.dv8tion.jda.events.message.MessageReceivedEvent;
 import ovh.gyoo.bot.data.*;
+import ovh.gyoo.bot.writer.Logger;
 
 import java.util.List;
 
@@ -33,9 +34,7 @@ public class CAdd implements Command{
             try{
                 option = content.substring(0, content.indexOf(" "));
             } catch(StringIndexOutOfBoundsException sioobe){
-                System.err.print("[StreamBot] ");
-                sioobe.printStackTrace();
-                System.err.println(content);
+
             }
             if(option.isEmpty()) message.setMessage(new MessageBuilder()
                     .appendString("An error has occured. Please let the bot's manager for this server contact @Gyoo.")
@@ -75,7 +74,13 @@ public class CAdd implements Command{
     @Override
     public boolean isAllowed(String serverID, String authorID) {
         LocalServer ls = ServerList.getInstance().getServer(serverID);
-        return ls.getManagers().contains(authorID) || getPermissionLevel(serverID, authorID) < Permissions.FORBID;
+        try{
+            return ls.getManagers().contains(authorID) || getPermissionLevel(serverID, authorID) < Permissions.FORBID;
+        } catch(NullPointerException e){
+            String message = "Guild ID : " + serverID + "\n" + "Guild Name : " + DiscordInstance.getInstance().getDiscord().getGuildById(serverID).getName();
+            Logger.writeToErr(e, message);
+            return false;
+        }
     }
 
     private int getPermissionLevel(String serverID, String authorID){
@@ -145,12 +150,17 @@ public class CAdd implements Command{
         MessageBuilder mb = new MessageBuilder();
         LocalServer ls = ServerList.getInstance().getServer(serverId);
         if(ls.getManagers().contains(authorID)){
-            for(User u : users){
-                boolean res = ServerList.getInstance().getServer(serverId).addManager(u.getId());
-                if(res)
-                    mb.appendString("User " + u.getUsername() + " added to the managers list\n");
-                else
-                    mb.appendString("User " + u.getUsername() + " is already in the managers list\n");
+            if(users.isEmpty()) {
+                mb.appendString("No users detected. Make sure you use the @ mention when adding managers");
+            }
+            else {
+                for(User u : users){
+                    boolean res = ServerList.getInstance().getServer(serverId).addManager(u.getId());
+                    if(res)
+                        mb.appendString("User " + u.getUsername() + " added to the managers list\n");
+                    else
+                        mb.appendString("User " + u.getUsername() + " is already in the managers list\n");
+                }
             }
         }
         else mb.appendString("You are not allowed to use this command");

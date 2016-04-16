@@ -22,12 +22,10 @@ public class Main {
         try {
             SimpleLog.addFileLogs(null,new File("err" + System.currentTimeMillis() + ".txt"));
         } catch (IOException e) {
-            Logger.writeToErr(e.getMessage());
+            Logger.writeToErr(e, "");
         }
         // Twitch
         TwitchChecker.getInstance();
-        // Discord
-        DiscordInstance.getInstance();
         // Backup data after restart
         File f = new File("ServerList.xml");
         if(f.exists()){
@@ -36,6 +34,8 @@ public class Main {
                 ServerList.getInstance().addServer(server.getServerID(), server);
             }
         }
+        // Discord
+        DiscordInstance.getInstance();
         // Message Consumer (anti rate limiter)
         Thread messageConsumer = new MessageConsumer(DiscordInstance.getInstance().getQueue());
         messageConsumer.start();
@@ -75,7 +75,7 @@ public class Main {
             try {
                 Thread.sleep(10000);
             } catch (InterruptedException e) {
-                Logger.writeToErr(e.getMessage());
+                Logger.writeToErr(e,"");
                 break;
             }
         }
